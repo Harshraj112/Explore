@@ -1,5 +1,5 @@
 // src/components/Carousel3D/Carousel3D.jsx
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import Card from "./Card";
 import useCarouselLogic from "./useCarouselLogic";
@@ -39,8 +39,32 @@ export default function Carousel3D() {
       setActiveIndex,
     });
 
+  // Fix first card visibility on refresh - use useLayoutEffect for synchronous DOM updates
+  useLayoutEffect(() => {
+    // Use GSAP.set for immediate, non-animated property setting
+    cardsRef.current.forEach((card, i) => {
+      if (!card) return;
+
+      const baseTransform = `rotateY(${i * cardAngle}deg) translateZ(${radius}px)`;
+
+      gsap.set(card, {
+        transform: `${baseTransform} scale(${i === 0 ? 1.08 : 0.92})`,
+        opacity: i === 0 ? 1 : 0.5,
+      });
+    });
+  }, [cardAngle, radius]);
+
   // Animate when slide changes
   useEffect(() => {
+    // Skip animation on initial render
+    if (activeIndex === 0) {
+      // Still update progress bar on initial
+      gsap.set(progressRef.current, {
+        width: `${((activeIndex + 1) / totalCards) * 100}%`,
+      });
+      return;
+    }
+
     // TITLE animation
     gsap.to(titleRef.current, {
       y: -30,
@@ -80,17 +104,24 @@ export default function Carousel3D() {
 
     // CARD scale / dim effect
     cardsRef.current.forEach((card, i) => {
+      if (!card) return;
+      const baseTransform = `rotateY(${i * cardAngle}deg) translateZ(${radius}px)`;
       gsap.to(card, {
-        scale: i === activeIndex ? 1.08 : 0.92,
+        transform: `${baseTransform} scale(${i === activeIndex ? 1.08 : 0.92})`,
         opacity: i === activeIndex ? 1 : 0.5,
         duration: 0.45,
         ease: "power2.out",
       });
     });
-  }, [activeIndex, totalCards]);
+  }, [activeIndex, totalCards, cardAngle, radius]);
 
   // Dot navigation helper
   const handleGoTo = (index) => goToSlide(index, () => setActiveIndex(index));
+
+  // Helper function to get transform for a card
+  const getCardTransform = (index) => {
+    return `rotateY(${index * cardAngle}deg) translateZ(${radius}px)`;
+  };
 
   return (
     <div
@@ -144,10 +175,7 @@ export default function Carousel3D() {
           </p>
         </div>
 
-        <p
-          ref={subtitleRef}
-          className="text-white/50 text-lg font-light mt-2"
-        >
+        <p ref={subtitleRef} className="text-white/50 text-lg font-light mt-2">
           Nature Collection — Vol. {activeIndex + 1}
         </p>
 
@@ -179,27 +207,17 @@ export default function Carousel3D() {
           className="relative w-64 h-80"
           style={{ transformStyle: "preserve-3d", transform: "rotateY(0deg)" }}
         >
-          {IMAGES.map((img, i) => {
-            const transform = `
-              rotateY(${i * cardAngle}deg)
-              translateZ(${radius}px)
-              scale(${i === 0 ? 1.08 : 0.92})
-            `;
-
-            return (
-              <Card
-                key={i}
-                img={img}
-                title={TITLES[i]}
-                innerRef={(el) => (cardsRef.current[i] = el)}
-                style={{
-                  transform,
-                  transformStyle: "preserve-3d",
-                  opacity: i === 0 ? 1 : 0.5,
-                }}
-              />
-            );
-          })}
+          {IMAGES.map((img, i) => (
+            <Card
+              key={i}
+              img={img}
+              title={TITLES[i]}
+              innerRef={(el) => (cardsRef.current[i] = el)}
+              style={{
+                transformStyle: "preserve-3d",
+              }}
+            />
+          ))}
         </div>
       </div>
 
