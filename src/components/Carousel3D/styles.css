@@ -1,0 +1,6 @@
+/* src/components/Carousel3D/styles.css */
+
+/* Tailwind doesn't support dynamic perspective values, so we use this helper */
+.carousel-perspective {
+  perspective: 1400px;
+}
